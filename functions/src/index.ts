@@ -3,8 +3,15 @@ import * as admin from "firebase-admin";
 import * as express from "express";
 import * as bodyParser from "body-parser";
 import axios from "axios";
+import { Configuration, OpenAIApi } from "openai";
 
-const apiKey = "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";
+const apiKey = "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";
+
+const configuration = new Configuration({
+  organization: "org-T1GRCkKuvk4HWc4NAngjo9LS",
+  apiKey: apiKey,
+});
+const openai = new OpenAIApi(configuration);
 
 admin.initializeApp(functions.config().firebase);
 
@@ -22,16 +29,25 @@ app.get("/warm", (req, res) => {
 
 // POST a GPT response using tone, user_input, and user_id
 app.post("/gpt", async (req, res) => {
-  const {userInput, tone} = req.body;
+  const {userId, userInput, tone} = req.body;
 
   if (!userInput || !tone) {
     res.status(400).send("Missing some field in request body");
   }
 
   try {
-    const generatedText = await generateText(userInput);
+
+    const config = {
+      model: "text-davinci-003",
+      prompt: userInput,
+      temperature: 0.7, // You can adjust the temperature of the generated text
+      max_tokens: 500, // You can adjust the maximum number of tokens
+      user: userId
+    };
+    const result = await openai.createCompletion(config)
+    // const generatedText = await generateText(userInput);
     res.status(200).json({
-      generatedText: generatedText,
+      generatedText: result,
     });
   } catch (err) {
     console.error(err);
