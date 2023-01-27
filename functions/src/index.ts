@@ -27,7 +27,7 @@ app.get("/warm", (req, res) => {
 
 // POST a GPT response using tone, user_input, and user_id
 app.post("/gpt", async (req, res) => {
-  const {userId, userInput, tone} = req.body;
+  const {userInput, tone} = req.body;
 
   if (!userInput || !tone) {
     res.status(400).json({
@@ -35,11 +35,11 @@ app.post("/gpt", async (req, res) => {
     });
   }
 
+  const prompt = tone+" "+userInput;
   try {
     const config = {
       model: "text-davinci-003",
-      prompt: tone+" "+userInput,
-      userId: userId,
+      prompt: prompt,
       temperature: 0.7, // You can adjust the temperature of the generated text
       max_tokens: 256, // You can adjust the maximum number of tokens
       top_p: 1, // alternative to sampling with temperature, called nucleus
