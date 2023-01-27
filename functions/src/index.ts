@@ -2,14 +2,12 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as express from "express";
 import * as bodyParser from "body-parser";
-import axios from "axios";
-import { Configuration, OpenAIApi } from "openai";
-
-const apiKey = "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";
+// import axios from "axios";
+import {Configuration, OpenAIApi} from "openai";
 
 const configuration = new Configuration({
   organization: "org-T1GRCkKuvk4HWc4NAngjo9LS",
-  apiKey: apiKey,
+  apiKey: process.env.OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
 
@@ -29,29 +27,37 @@ app.get("/warm", (req, res) => {
 
 // POST a GPT response using tone, user_input, and user_id
 app.post("/gpt", async (req, res) => {
-  const {userId, userInput, tone} = req.body;
+  const {userInput, tone} = req.body;
 
   if (!userInput || !tone) {
-    res.status(400).send("Missing some field in request body");
+    res.status(400).json({
+      error: "Missing some field in request body",
+    });
   }
 
   try {
-
     const config = {
       model: "text-davinci-003",
       prompt: userInput,
       temperature: 0.7, // You can adjust the temperature of the generated text
-      max_tokens: 500, // You can adjust the maximum number of tokens
-      user: userId
+      max_tokens: 256, // You can adjust the maximum number of tokens
+      top_p: 1, // alternative to sampling with temperature, called nucleus
+      frequency_penalty: 0, // Number between -2.0 and 2.0. Positive values
+      presence_penalty: 0,
     };
-    const result = await openai.createCompletion(config)
+
+    const result = await openai.createCompletion(config);
     // const generatedText = await generateText(userInput);
+    const response = result.data.choices[0].text;
     res.status(200).json({
-      generatedText: result,
+      generatedText: response,
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Internal Server Error");
+    const e = normalizeError(err);
+    // console.error(err);
+    res.status(500).json({
+      error: "Internal Server Error: "+e,
+    });
   }
 });
 
@@ -59,32 +65,32 @@ app.post("/gpt", async (req, res) => {
  * @param {string} prompt prompt to send to open ai
  * @return {string}
  */
-async function generateText(prompt: string): Promise<string> {
-  const data = {
-    model: "text-davinci-003",
-    prompt: prompt,
-    temperature: 0.7, // You can adjust the temperature of the generated text
-    max_tokens: 500, // You can adjust the maximum number of tokens
-  };
+// async function generateText(prompt: string): Promise<string> {
+//   const data = {
+//     model: "text-davinci-003",
+//     prompt: prompt,
+//     temperature: 0.7, // You can adjust the temperature of the generated text
+//     max_tokens: 500, // You can adjust the maximum number of tokens
+//   };
 
-  try {
-    const response = await axios.post(
-        "https://api.openai.com/v1/completions",
-        data,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-          },
-        }
-    );
-    return response.data.choices[0].text;
-  } catch (err) {
-    const e = normalizeError(err);
-    console.error(e);
-    return e.message;
-  }
-}
+//   try {
+//     const response = await axios.post(
+//         "https://api.openai.com/v1/completions",
+//         data,
+//         {
+//           headers: {
+//             "Content-Type": "application/json",
+//             "Authorization": `Bearer ${apiKey}`,
+//           },
+//         }
+//     );
+//     return response.data.choices[0].text;
+//   } catch (err) {
+//     const e = normalizeError(err);
+//     console.error(e);
+//     return e.message;
+//   }
+// }
 
 /**
  * @param {any} e
